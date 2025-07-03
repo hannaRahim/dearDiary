@@ -19,10 +19,22 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   File? _selectedImage;
-  String? selectedMood;
+  String? selectedMood; // This will hold the selected mood string
   List<String> selectedHashtags = [];
 
   int _selectedIndex = 1;
+
+  // Define the list of moods with emojis and labels
+  final List<Map<String, String>> moods = [
+    {'emoji': '😄', 'label': 'Happy'},
+    {'emoji': '😐', 'label': 'Neutral'},
+    {'emoji': '😢', 'label': 'Sad'},
+    {'emoji': '😠', 'label': 'Angry'},
+    {'emoji': '😌', 'label': 'Relaxed'},
+    {'emoji': '🤩', 'label': 'Excited'},
+    {'emoji': '😍', 'label': 'Loved'},
+    {'emoji': '😴', 'label': 'Tired'},
+  ];
 
   final List<String> hashtags = [
     '#happy',
@@ -37,9 +49,11 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
   @override
   void initState() {
     super.initState();
+    // Set the initial mood if provided (e.g., from the home screen mood selection)
     selectedMood = widget.initialMood;
   }
 
+  // Function to pick an image from camera or gallery
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
@@ -51,6 +65,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     }
   }
 
+  // Function to toggle the selection of hashtags
   void _toggleHashtag(String tag) {
     setState(() {
       if (selectedHashtags.contains(tag)) {
@@ -61,10 +76,12 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     });
   }
 
+  // Function to save the journal entry
   Future<void> _saveEntry() async {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
 
+    // Validate if title and content are not empty
     if (title.isEmpty || content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in both fields')),
@@ -79,13 +96,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
         final String fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
         final String path = 'journal_images/$fileName'; // Folder and filename in storage
 
-        // Upload the file
+        // Upload the file to the 'journal-images' bucket
         await Supabase.instance.client.storage
             .from('journal-images') // Your bucket name
             .upload(path, _selectedImage!,
                 fileOptions: const FileOptions(upsert: true));
 
-        // Get the public URL
+        // Get the public URL of the uploaded image
         imageUrl = Supabase.instance.client.storage
             .from('journal-images')
             .getPublicUrl(path);
@@ -93,7 +110,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
         print('Image uploaded to: $imageUrl');
       } catch (e) {
         print('Error uploading image: $e');
-        // Optionally show an error to the user
+        // Show an error message to the user if image upload fails
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to upload image: $e')),
         );
@@ -104,18 +121,20 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     final now = DateTime.now();
     final formattedDate = DateFormat('yyyy-MM-dd – kk:mm').format(now);
 
+    // Create a new JournalEntry object with all the collected data
     final newEntry = JournalEntry(
       title: title,
       content: content,
       date: formattedDate,
-      mood: selectedMood,
-      hashtags: selectedHashtags.join(', '), // Save as comma-separated string
+      mood: selectedMood, // Assign the selected mood
+      hashtags: selectedHashtags.join(', '), // Save hashtags as a comma-separated string
       imagePath: imageUrl, // Save the Supabase image URL
     );
 
     try {
+      // Insert the new entry into the database
       await DatabaseService().insertEntry(newEntry);
-      Navigator.pop(context);
+      Navigator.pop(context); // Go back to the previous screen (Home screen)
     } catch (e) {
       print('Error saving entry to database: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -124,14 +143,17 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     }
   }
 
+  // Handles navigation bar taps
   void _onNavTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
 
     if (index == 0) {
-      Navigator.pop(context);
+      Navigator.pop(context); // Navigate back to Home screen
     }
+    // No action for index 1 (Add screen itself)
+    // No action for index 2 (Profile screen is handled by Home screen)
   }
 
   @override
@@ -149,28 +171,86 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Mood selection section
+                  const Text(
+                    'How are you feeling today?',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  // Row of tappable mood emojis
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: moods.map((mood) {
+                      final bool isSelected = selectedMood == mood['label'];
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedMood = mood['label']; // Update selected mood
+                          });
+                        },
+                        child: AnimatedContainer( // Use AnimatedContainer for smooth transitions
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.blue.shade100 // Highlight color
+                                : Colors.grey.shade100, // Default soft color
+                            borderRadius: BorderRadius.circular(16), // Rounded corners
+                            border: Border.all(
+                              color: isSelected ? Colors.blueAccent : Colors.transparent,
+                              width: 2,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.blue.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      spreadRadius: 2,
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                mood['emoji']!,
+                                style: const TextStyle(fontSize: 36), // Large emoji size
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                mood['label']!,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected ? Colors.blue.shade800 : Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24), // Add some space after mood selection
+
+                  // Display selected mood (optional, as the icons themselves show selection)
                   if (selectedMood != null)
                     Center(
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.blue),
-                        ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
                         child: Text(
-                          '~ Feeling ${selectedMood!} ~',
+                          'Current Mood: ${moods.firstWhere((m) => m['label'] == selectedMood)['emoji']} ${selectedMood!}',
                           style: const TextStyle(
-                            fontSize: 16,
-                            fontStyle: FontStyle.italic,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                             color: Colors.blueAccent,
                           ),
                         ),
                       ),
                     ),
 
+                  // Image preview section
                   if (_selectedImage != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -183,6 +263,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                     ),
                   const SizedBox(height: 16),
 
+                  // Title input field
                   const Text(
                     'Title',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -196,6 +277,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                   ),
                   const SizedBox(height: 24),
 
+                  // Content (Story) input field
                   const Text(
                     'Story',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -210,6 +292,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                   ),
                   const SizedBox(height: 24),
 
+                  // Mood Tags (Hashtags) section
                   const Text(
                     'Mood Tags',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -254,6 +337,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
             ),
           ),
 
+          // Bottom action bar (camera, gallery, save button)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
@@ -289,6 +373,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
           ),
         ],
       ),
+      // Bottom navigation bar
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onNavTapped,
