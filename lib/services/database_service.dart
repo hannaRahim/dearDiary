@@ -71,19 +71,24 @@ class DatabaseService {
 
   // (Optional) Update an entry in Supabase
   Future<int> updateEntry(JournalEntry entry) async {
-    try {
-      await _supabase.from('journal_entries').update({
-        'title': entry.title,
-        'content': entry.content,
-        'date': entry.date,
-        'mood': entry.mood,
-        'hashtags': entry.hashtags,
-        'imagePath': entry.imagePath,
-      }).eq('id', entry.id);
-      return 1; // Return 1 to indicate success
-    } catch (e) {
-      print('Error updating entry: $e');
-      rethrow;
+  try {
+    if (entry.id == null) {
+      throw Exception('Cannot update entry: ID is null');
+    }
+
+    await _supabase.from('journal_entries').update({
+      'title': entry.title,
+      'content': entry.content,
+      'date': entry.date,
+      'mood': entry.mood,
+      'hashtags': entry.hashtags,
+      'imagePath': entry.imagePath,
+    }).eq('id', entry.id!);
+
+    return 1;
+  } catch (e) {
+    print('Error updating entry: $e');
+    rethrow;
     }
   }
 }

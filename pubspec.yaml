@@ -36,6 +36,7 @@ dependencies:
   intl: ^0.18.1
   image_picker: ^1.0.4
   supabase_flutter: ^2.5.0 
+  flutter_dotenv: ^5.0.2
 
 
   # The following adds the Cupertino Icons font to your application.
