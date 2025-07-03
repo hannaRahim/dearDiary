@@ -5,17 +5,9 @@ class DatabaseService {
   // Get the Supabase client instance
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Since we are using Supabase, the local database instance is no longer needed.
-  // We can remove the static _instance and _database, and the _internal constructor
-  // if this class will solely be for Supabase operations.
-  // For simplicity, we'll keep it as a singleton for now but modify its behavior.
-
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
-
-  // No need for _initDB or _createDB methods with Supabase.
-  // The table is created directly in the Supabase dashboard.
 
   // Insert a journal entry into Supabase
   Future<int> insertEntry(JournalEntry entry) async {
@@ -42,14 +34,14 @@ class DatabaseService {
     }
   }
 
-  // Retrieve all journal entries from Supabase
+  // Retrieve all journal entries from Supabase, ordered by date ascending
   Future<List<JournalEntry>> getEntries() async {
     try {
-      // Fetch all entries, ordered by 'id' in descending order (most recent first)
+      // Fetch all entries, ordered by 'date' in ascending order for streak calculation
       final List<Map<String, dynamic>> data = await _supabase
           .from('journal_entries')
           .select('*') // Select all columns
-          .order('id', ascending: false); // Order by id descending
+          .order('date', ascending: true); // Order by date ascending
 
       return data.map((map) => JournalEntry.fromMap(map)).toList();
     } catch (e) {
